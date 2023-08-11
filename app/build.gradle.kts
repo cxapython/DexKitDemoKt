@@ -6,10 +6,10 @@ plugins {
 android {
     compileSdk = 33
 
-    namespace = "com.example.template"
+    namespace = "com.example.dexkitdemokt"
 
     defaultConfig {
-        applicationId = "com.example.template"
+        applicationId = "com.example.dexkitdemokt"
         minSdk = 24
         targetSdk = 33
         versionCode = 1
@@ -39,5 +39,6 @@ android {
 
 dependencies {
     implementation("com.github.kyuubiran:EzXHelper:2.0.6")
+    implementation("org.luckypray:DexKit:1.1.8")
     compileOnly("de.robv.android.xposed:api:82")
 }
