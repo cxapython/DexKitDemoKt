@@ -1,7 +1,16 @@
 package com.example.dexkitdemokt
 
+import android.app.Activity
+import android.app.Application
+import android.content.Context
+import com.example.dexkitdemokt.hook.BaseHook
+import com.example.dexkitdemokt.hook.ExampleHook
 import com.github.kyuubiran.ezxhelper.EzXHelper
+import com.github.kyuubiran.ezxhelper.EzXHelper.appContext
+import com.github.kyuubiran.ezxhelper.HookFactory.`-Static`.createHook
 import com.github.kyuubiran.ezxhelper.Log
+import com.github.kyuubiran.ezxhelper.LogExtensions.logexIfThrow
+import com.github.kyuubiran.ezxhelper.finders.MethodFinder
 import de.robv.android.xposed.IXposedHookLoadPackage
 import de.robv.android.xposed.IXposedHookZygoteInit
 import de.robv.android.xposed.XC_MethodReplacement
@@ -10,25 +19,67 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage
 import io.luckypray.dexkit.DexKitBridge
 import io.luckypray.dexkit.enums.FieldUsingType
 import io.luckypray.dexkit.enums.MatchType
+import java.lang.ref.WeakReference
 import java.lang.reflect.Method
 
 private const val PACKAGE_NAME_HOOKED = "com.example.cvc"
 private const val TAG = "cxa_ktdemo"
 
 class MainHook : IXposedHookLoadPackage, IXposedHookZygoteInit /* Optional */ {
+    companion object {
+        lateinit var dexKit: DexKitBridge
+        lateinit var currentActivity: WeakReference<Activity>
+        lateinit var logcatProcess: Process
+
+        fun loadDexKit() {
+            if (this::dexKit.isInitialized) return
+            val ts = System.currentTimeMillis()
+            System.loadLibrary("dexkit")
+            DexKitBridge.create(appContext.applicationInfo.sourceDir)?.let {
+                dexKit = it
+                Log.i("DexKit loaded in ${System.currentTimeMillis() - ts} ms")
+            }
+        }
+
+        fun closeDexKit() {
+            if (this::dexKit.isInitialized) dexKit.close()
+        }
+
+    }
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
         if (lpparam.packageName == PACKAGE_NAME_HOOKED) {
             // Init EzXHelper
             EzXHelper.initHandleLoadPackage(lpparam)
-            EzXHelper.setLogTag(TAG)
-            EzXHelper.setToastTag(TAG)
-            // Init hooks
-            Log.d("in cvc")
-            vipHook(lpparam)
+            MethodFinder.fromClass(Application::class.java).filterByName("attach")
+                .filterByParamTypes(Context::class.java).first().createHook {
+                    before { param ->
+                        val context = param.args[0] as Context
+                        EzXHelper.initAppContext(context)
+                        Log.d("AttachContext")
+                        val hooks = arrayListOf(
+                            ExampleHook
+                        )
+                        Log.d("in cvc")
+                        initHooks(hooks)
+                        closeDexKit()
+                    }
+
+
 
         }
     }
-
+    }
+    private fun initHooks(hook: List<BaseHook>) {
+        hook.forEach {
+            kotlin.runCatching {
+                if (it.isInit) return@forEach
+                val ts = System.currentTimeMillis()
+                it.init()
+                it.isInit = true
+                Log.i("Inited ${it.name} hook in ${System.currentTimeMillis() - ts} ms")
+            }.logexIfThrow("Failed init hook: ${it.name}")
+        }
+    }
     @Throws(NoSuchMethodException::class)
     fun vipHook(loadPackageParam: XC_LoadPackage.LoadPackageParam) {
         System.loadLibrary("dexkit")
@@ -107,5 +158,7 @@ class MainHook : IXposedHookLoadPackage, IXposedHookZygoteInit /* Optional */ {
     // Optional
     override fun initZygote(startupParam: IXposedHookZygoteInit.StartupParam) {
         EzXHelper.initZygote(startupParam)
+        EzXHelper.setLogTag(TAG)
+        EzXHelper.setToastTag(TAG)
     }
 }
