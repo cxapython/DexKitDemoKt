@@ -16,6 +16,7 @@ import com.github.kyuubiran.ezxhelper.finders.FieldFinder
 import com.github.kyuubiran.ezxhelper.finders.MethodFinder
 import de.robv.android.xposed.XposedBridge
 import de.robv.android.xposed.XposedHelpers
+import io.luckypray.dexkit.enums.FieldUsingType
 import io.luckypray.dexkit.enums.MatchType
 import java.lang.reflect.Modifier
 import java.util.Objects
@@ -55,13 +56,24 @@ object ExampleHook : BaseHook() {
             queryMap(classTargetMap)
             matchType = MatchType.FULL
         }
-
+        Log.d("====根据字符串sum2查找所在的类名====")
         val resultObj = resultC["fcl"]?.first()?.getClassInstance(EzXHelper.classLoader)?.newInstance()
-        val bbb = resultObj?.objectHelper()?.getObjectOrNull("bbb")
-        Log.d("bbb:$bbb")
-        val resultSum = resultObj?.objectHelper()?.invokeMethodBestMatch("sum2", Int::class.java, 123,123)
+        Log.d("====创建类的实例对象newInstance====")
 
-//        val resultSum = XposedHelpers.callMethod(resultObj,"sum2",6,9);
+        val bbb = resultObj?.objectHelper()?.getObjectOrNull("bbb")
+        Log.d("获取bbb:$bbb")
+
+        //获取对应aaa类中bbb的值
+        val obj = FieldFinder.fromClass("com.example.cvc.aaa")
+            .filterStatic()
+            .filterIncludeModifiers(Modifier.PUBLIC)
+            .filterNonPrivate()
+            .filterByName("bbb")
+            .filterByType(Int::class.java)
+            .firstOrNull()?.get(null)
+        //主动调用两种调用方式
+        // val resultSum = resultObj?.objectHelper()?.invokeMethodBestMatch("sum2", Int::class.java, 123,123)
+        val resultSum = XposedHelpers.callMethod(resultObj,"sum2",6,obj);
         Log.d("resultSm:$resultSum")
     }
 }
