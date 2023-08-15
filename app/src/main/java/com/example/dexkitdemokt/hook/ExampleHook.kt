@@ -19,6 +19,7 @@ import de.robv.android.xposed.XposedHelpers
 import io.luckypray.dexkit.enums.MatchType
 import java.lang.reflect.Modifier
 import java.util.Objects
+import kotlin.reflect.typeOf
 
 // Example hook
 object ExampleHook : BaseHook() {
@@ -54,11 +55,13 @@ object ExampleHook : BaseHook() {
             queryMap(classTargetMap)
             matchType = MatchType.FULL
         }
-        val resultObj = resultC["fcl"]?.first()?.getClassInstance(EzXHelper.classLoader)
-        Log.d("resultObj is:$resultObj")
+
+        val resultObj = resultC["fcl"]?.first()?.getClassInstance(EzXHelper.classLoader)?.newInstance()
+        val bbb = resultObj?.objectHelper()?.getObjectOrNull("bbb")
+        Log.d("bbb:$bbb")
         val resultSum = resultObj?.objectHelper()?.invokeMethodBestMatch("sum2", Int::class.java, 123,123)
-        //val resultSum = XposedHelpers.callStaticMethod(resultObj,"sum2",6,9);
+
+//        val resultSum = XposedHelpers.callMethod(resultObj,"sum2",6,9);
         Log.d("resultSm:$resultSum")
     }
-
 }
